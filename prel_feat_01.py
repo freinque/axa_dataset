@@ -13,14 +13,14 @@ pd.__version__
 
 #FC Loads data files in trips data frame. Run the script in the folder where the drivers' (users') folders are.
 trips = []
-users = glob.glob('./351*/')
+users = glob.glob('./drivers/351*/')
 for user in users:
     trip_files = glob.glob('%s/*.csv'%user)
     trips_u = []
     for tf in trip_files:
         trips_u_tf = pd.read_csv( tf )
-        trips_u_tf['user'] = int(user.split('/')[1]) * np.ones( len( trips_u_tf ), dtype=int )
-        trips_u_tf['trip'] = int(tf.split('/')[2].split('.')[0]) * np.ones( len( trips_u_tf ), dtype=int )
+        trips_u_tf['user'] = int(user.split('/')[2]) * np.ones( len( trips_u_tf ), dtype=int )
+        trips_u_tf['trip'] = int(tf.split('/')[3].split('.')[0]) * np.ones( len( trips_u_tf ), dtype=int )
         trips_u.append( trips_u_tf )
     trips_u = pd.concat(  trips_u )
     trips.append( trips_u )
@@ -72,17 +72,20 @@ for t in np.arange(n_trips_u)+1: #trips.ix[user_n,:,:].index.levels[0]: #set(tri
 #FC calculates the 'signed' inverse radius of the circle through three consecutive points
 def sign_curv(p_0,p_1,p_2):
     center = [-9999,-9999]
-    sign = np.sign( (p_1[0]-p_0[0])*(p_2[1]-p_1[1]) - (p_2[0]-p_1[0])*(p_1[1]-p_0[1]) )
+    p_01 = p_1 - p_0
+    p_12 = p_2 - p_1
+    
+    sign = np.sign( p_01[0]*p_12[1] - p_12[0]*p_01[1] )
     
     if sign == 0:
         return 0
     
     else:
-        if (p_1[0]-p_0[0]) != 0:
-            s_0 = (p_1[1]-p_0[1])/float(p_1[0]-p_0[0])
+        if p_01[0] != 0:
+            s_0 = p_01[1]/float(p_01[0])
         
-            if (p_2[0]-p_1[0]) != 0:
-                s_1 = (p_2[1]-p_1[1])/float(p_2[0]-p_1[0])
+            if p_12[0] != 0:
+                s_1 = p_12[1]/float(p_12[0])
             
                 center[0] = 0.5*( s_0*s_1*(p_2[1]-p_0[1]) + s_0*(p_1[0]+p_2[0]) - s_1*(p_0[0]+p_1[0]) ) / (s_0-s_1)
             
@@ -96,26 +99,28 @@ def sign_curv(p_0,p_1,p_2):
                 return sign*(1/float(rad))
     
             else:
+                #FC2 stupid error fixed
                 center[1] = 0.5*(p_2[1] + p_1[1])
             
                 if s_0 == 0:
                     center[0] = 0.5*( p_1[0] + p_0[0] )
                 else:
-                    center[0] = (1/s_0)*( center[1] - 0.5* (p_1[1]-p_0[1]) ) + 0.5*(p_1[0]-p_0[0]) 
+                    center[0] = s_0*( 0.5* (p_0[1]+p_1[1]) - center[1] ) + 0.5*(p_0[0]+p_1[0]) 
     
                 rad = sqrt( (p_0[0]-center[0])**2 + (p_0[1]-center[1])**2 )
             
                 return sign*(1/float(rad))
         
         else:
-            s_1 = (p_2[1]-p_1[1])/float(p_2[0]-p_1[0])
+            #FC2 stupid error fixed
+            s_1 = p_12[1]/float(p_12[0])
             
             center[1] = 0.5*(p_1[1] + p_0[1])
             
             if s_1 == 0:
                 center[0] = 0.5*(p_2[0] + p_1[0])
             else:
-                center[0] = (1/s_1)*( center[1] - 0.5* (p_2[1]-p_1[1]) ) + 0.5*(p_2[0]-p_1[0]) 
+                center[0] = s_1*( 0.5*(p_1[1]+p_2[1]) - center[1] ) + 0.5*(p_1[0]+p_2[0]) 
     
             rad = sqrt( (p_0[0]-center[0])**2 + (p_0[1]-center[1])**2 )   
         
@@ -251,17 +256,139 @@ trips['speed'] = df_speed(trips[['x','y']])
 
 # <codecell>
 
-trips[10000:10010]
+trips[ trips['user'] == 3516 ][370:380]
 
 # <codecell>
 
 #FC plots some of the above acce components
-trips_u = trips[ trips['user']==user_n ]
+trips_u = trips[ trips['user']==3512 ] #user_n ]
 for t in np.arange(n_trips_u)+1: #trips.ix[user_n,:,:].index.levels[0]: #set(trips_u['trip']): #xrange(1,10,1):
     trips_u_t = trips_u[ trips_u['trip']==t ]
     
-    plt.plot( np.arange(len(trips_u_t))[:50], trips_u_t['speed'][:50], linestyle='-') #, marker='*' )
+    plt.plot( np.arange(len(trips_u_t))[:100], trips_u_t['speed'][:100], linestyle='-') #, marker='*' )
     plt.title('user %d, %d trips'%(user_n, n_trips_u) )
+
+# <codecell>
+
+
+# <codecell>
+
+f = {'sign_curv': np.mean, 'acce':np.mean, 'acce_perp':np.mean, 'acce_tang':np.mean, 'speed':np.mean}
+
+# <codecell>
+
+grouped_trips = trips.groupby(['user','trip'])
+
+# <codecell>
+
+#FC calculates the average ['sign_curv','acce','acce_perp','acce_tang','speed'] for each trip 
+averages = grouped_trips.agg(f)
+averages['trip_dura'] = grouped_trips['time'].apply(np.max)
+
+# <codecell>
+
+max_trip_dura = np.max(averages['trip_dura'])
+
+# <codecell>
+
+
+# <codecell>
+
+def plot_hist(np_hist):
+    return plt.bar(np_hist[1][:-1],np_hist[0]/float( np.sum(np_hist[0]) ), width=np_hist[1][1]-np_hist[1][0] )
+
+# <codecell>
+
+
+# <codecell>
+
+user_n = 3516
+averages_u = averages.loc[user_n, :]
+
+# <codecell>
+
+averages_u[:5]
+
+# <codecell>
+
+hist_u_trip_dura = np.histogram(averages_u['trip_dura'],bins=np.linspace(0,max_trip_dura,num=100))
+
+# <codecell>
+
+plot_hist(hist_u_trip_dura)
+
+# <codecell>
+
+hist_trip_dura = np.histogram(averages['trip_dura'],bins=np.linspace(0,max_trip_dura,num=100))
+
+# <codecell>
+
+plot_hist(hist_trip_dura)
+
+# <codecell>
+
+
+# <codecell>
+
+user_n = 3519
+trips_u = trips[ trips['user']== user_n ]
+
+# <codecell>
+
+hist_u_speed = np.histogram(trips_u['speed'],bins=np.linspace(0,40,num=100))
+
+# <codecell>
+
+plot_hist(hist_u_speed)
+
+# <codecell>
+
+hist_speed = np.histogram(trips['speed'],bins=np.linspace(0,40,num=100))
+
+# <codecell>
+
+plot_hist(hist_speed)
+
+# <codecell>
+
+
+# <codecell>
+
+hist_u_acce = np.histogram(trips_u['acce'],bins=np.linspace(0,6,num=100))
+
+# <codecell>
+
+plot_hist(hist_u_acce)
+
+# <codecell>
+
+hist_acce = np.histogram(trips['acce'],bins=np.linspace(0,6,num=100))
+
+# <codecell>
+
+plot_hist(hist_acce)
+
+# <codecell>
+
+
+# <codecell>
+
+hist_u_sign_curv = np.histogram(trips_u['sign_curv'],bins=np.linspace(-0.2,0.2,num=100))
+
+# <codecell>
+
+plot_hist(hist_u_sign_curv)
+
+# <codecell>
+
+hist_sign_curv = np.histogram(trips['sign_curv'],bins=np.linspace(-0.2,0.2,num=100))
+
+# <codecell>
+
+plot_hist(hist_sign_curv)
+
+# <codecell>
+
 
 # <codecell>
 
