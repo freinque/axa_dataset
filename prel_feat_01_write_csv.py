@@ -20,7 +20,7 @@ def df_speed(df):
     p = np.array(df)
     
     c = [ 0 ]
-    for i in xrange(1,len(df)-1,1):
+    for i in xrange(1,len(df),1):
         c.append( speed(p[i-1], p[i])*( not ( np.all(p[i]==0) ) ) ) 
     
     return pd.DataFrame(c).reindex(df.index)
@@ -144,7 +144,9 @@ users = np.array([ int(user.split('/')[2]) for user in users ])
 users = np.sort(users)
 users = np.split(users,228)
 
-for c in xrange(0,5,1):#range(len(users)):
+#0,5
+
+for c in xrange(5,10,1):#range(len(users)):
     for user in users[c]:
         trip_files = glob.glob('./drivers/%i/*.csv'%user)
         trips_u = []
@@ -189,8 +191,9 @@ for c in xrange(0,5,1):#range(len(users)):
 
         trips_u['speed'] = df_speed(trips_u[['x','y']])
 
-
- 
+        grouped_trips = trips.groupby(['user','trip']) 
+        trips['dist'] = grouped_trips['speed'].apply( np.cumsum )
+        
         if user == 1:
             trips_u.to_csv('./trips.csv', index=False, mode='w')
         else:
