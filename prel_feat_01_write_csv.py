@@ -144,9 +144,9 @@ users = np.array([ int(user.split('/')[2]) for user in users ])
 users = np.sort(users)
 users = np.split(users,228)
 
-#0,5
+#FC4 performed with xrange(0,5,1) and then xrange(5,10,1)
 
-for c in xrange(5,10,1):#range(len(users)):
+for c in xrange(0,10,1):#range(len(users)):
     for user in users[c]:
         trip_files = glob.glob('./drivers/%i/*.csv'%user)
         trips_u = []
