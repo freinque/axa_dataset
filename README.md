@@ -2,5 +2,5 @@ This script explores some features that can be used to try to determine (classif
 
 ## Notebooks
 
-[2 users classification/outlier detection](http://github.com/freinque/axa_dataset/html/prel_feat_02_analysis.html)
+[2 users classification/outlier detection](http://freinque.github.io/axa_dataset/html/prel_feat_02_analysis.html)
 
